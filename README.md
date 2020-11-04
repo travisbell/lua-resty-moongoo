@@ -1,3 +1,5 @@
+## This project is on hiatus due to lack of free time (unless someone wants to sponsor it's development)
+
 # LUA-RESTY-MOONGOO
 
 Adding some lua moondust to the mongo goo
@@ -80,6 +82,7 @@ Also, möngö is mongolian currency, and mungu is god in Swahili.
     * [write](#write)
     * [close](#close-1)
 * [Authors](#authors)
+* [Sponsors](#sponsors)
 * [Copyright and License](#copyright-and-license)
 
 ## Requirements
@@ -371,7 +374,7 @@ Finds the distinct values for a specified field, according to query.
 Returns array, containing unique filenames.
 
 #### remove
-`<cbson.uint>num, <string>err = gridfsobj:remove(<cbson.oid>id)`  
+`<cbson.uint>num, <string>err = gridfsobj:remove(<cbson.oid or self-chosen type>id)`  
 Removes file from GridFS.  
 Returns number of chunks removed.
 
@@ -383,11 +386,11 @@ E.g. for file with 3 versions: 0, 1, 2 = -3, -2, -1
 0 or -3 is oldest, while  -1 or 2 - newest.
 
 #### open
-`<string>gridfsfile, <string>err = gridfsobj:open(<cbson.oid>id)`  
+`<gridfs.file>gridfsfile, <string>err = gridfsobj:open(<cbson.oid or self-chosen type>id)`  
 Opens GridFS file for reading.
 
 #### create
-`<string>gridfsfile = gridfsobj:create(<string>filename, <table>opts, <bool>safe)`  
+`<gridfs.file>gridfsfile = gridfsobj:create(<string>filename, <table>opts, <bool>safe)`  
 Creates new GridFS file for writing.  
 If `safe` is true (default), all chunks will be inserted only when you call gridfsfile:close().  
 If `safe` is false, chunks will be inserted into db with every gridfsfile:write(...),  
@@ -451,7 +454,7 @@ Returns full file contents.
 Writes data to GridFS file.
 
 #### close
-`<cbson.oid>id, <string>error = gridfsfile:close()`  
+`<cbson.oid or self-chosen type>id, <string>error = gridfsfile:close()`  
 Finalizes file by writing queued chunks and metadata.
 
 [Back to TOC](#table-of-contents)
@@ -464,6 +467,12 @@ Epifanov Ivan <isage.dna@gmail.com>
 
 [Back to TOC](#table-of-contents)
 
+
+## Sponsors
+
+[@dev0pz](https://github.com/dev0pz)
+
+[Back to TOC](#table-of-contents)
 
 
 ## Copyright and License
