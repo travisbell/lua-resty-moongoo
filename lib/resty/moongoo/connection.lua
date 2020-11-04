@@ -17,7 +17,7 @@ local _M = {}
 
 local mt = { __index = _M }
 
-function _M.new(host, port, timeout)
+function _M.new(host, port, timeout, pool_size)
   local sock = socket()
   if timeout then
     sock:settimeout(timeout)
@@ -27,14 +27,16 @@ function _M.new(host, port, timeout)
     sock = sock;
     host = host;
     port = port;
+    pool_size = pool_size;
     _id = 0;
   }, mt)
 end
 
-function _M.connect(self, host, port)
+function _M.connect(self, host, port, pool_size)
   self.host = host or self.host
   self.port = port or self.port
-  return self.sock:connect(self.host, self.port)
+  self.pool_size = pool_size or self.pool_size
+  return self.sock:connect(self.host, self.port, { pool_size = self.pool_size })
 end
 
 function _M.handshake(self)
@@ -48,9 +50,9 @@ function _M.handshake(self)
   end
 end
 
-function _M.close(self, timeout, pool_size)
+function _M.close(self, timeout)
   if ngx then
-    self.sock:setkeepalive(timeout, pool_size)
+    self.sock:setkeepalive(timeout)
   else
     self.sock:close()
   end

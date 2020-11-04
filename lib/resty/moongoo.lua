@@ -24,6 +24,7 @@ function _M.new(uri)
   local journal = conninfo.query and conninfo.query.journal or false
   local ssl = conninfo.query and conninfo.query.ssl or false
   local stimeout = conninfo.query.socketTimeoutMS and conninfo.query.socketTimeoutMS or nil
+  local pool_size = conninfo.query.pool_size and conninfo.query.pool_size or nil
 
   return setmetatable({
     connection = nil;
@@ -37,7 +38,8 @@ function _M.new(uri)
     password = conninfo.password or "";
     auth_algo = auth_algo,
     ssl = ssl,
-    version = nil
+    version = nil,
+    pool_size = pool_size
   }, mt)
 end
 
@@ -63,7 +65,7 @@ function _M.connect(self)
   -- foreach host
   for k, v in ipairs(self.hosts) do
     -- connect
-    self.connection, err = connection.new(v.host, v.port, self.stimeout)
+    self.connection, err = connection.new(v.host, v.port, self.stimeout, self.pool_size)
     if not self.connection then
       return nil, err
     end
@@ -94,7 +96,7 @@ function _M.connect(self)
           string.gsub(ismaster.primary, "([^:]+):([^:]+)", function(host,port) mhost=host; mport=port end)
           self.connection:close()
           self.connection = nil
-          self.connection, err = connection.new(mhost, mport, self.stimeout)
+          self.connection, err = connection.new(mhost, mport, self.stimeout, self.pool_size)
           if not self.connection then
             return nil, err
           end
@@ -129,9 +131,9 @@ function _M.connect(self)
   return nil, "Can't connect to any of servers"
 end
 
-function _M.close(self, timeout, pool_size)
+function _M.close(self, timeout)
   if self.connection then
-    self.connection:close(timeout, pool_size)
+    self.connection:close(timeout)
     self.connection = nil
   end
 end
