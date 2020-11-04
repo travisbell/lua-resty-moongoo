@@ -66,110 +66,107 @@ local function print_r(t, indent)
     return
   end
   for key,value in pairs(t) do
-    io.write(indent,'[',tostring(key),']') 
+    io.write(indent,'[',tostring(key),']')
     if type(value)=="table" then io.write(':\n') print_r(value,indent..'\t')
     else io.write(' = ',tostring(value),'\n') end
   end
 end
 
 local function parse_uri(url)
-    -- initialize default parameters
-    local parsed = {}
-    -- empty url is parsed to nil
-    if not url or url == "" then return nil, "invalid url" end
-    -- remove whitespace
-    url = string.gsub(url, "%s", "")
-    -- get fragment
-    url = string.gsub(url, "#(.*)$", function(f)
-        parsed.fragment = f
-        return ""
+  -- initialize default parameters
+  local parsed = {}
+  -- empty url is parsed to nil
+  if not url or url == "" then return nil, "invalid url" end
+  -- remove whitespace
+  url = string.gsub(url, "%s", "")
+  -- get fragment
+  url = string.gsub(url, "#(.*)$", function(f)
+    parsed.fragment = f
+    return ""
+  end)
+  -- get scheme
+  url = string.gsub(url, "^([%w][%w%+%-%.]*)%:", function(s) parsed.scheme = s; return "" end)
+
+  -- get authority
+  local location
+  url = string.gsub(url, "^//([^/]*)", function(n)
+    location = n
+    return ""
+  end)
+
+  -- get query stringing
+  url = string.gsub(url, "%?(.*)", function(q)
+    parsed.query_string = q
+    return ""
+  end)
+  -- get params
+  url = string.gsub(url, "%;(.*)", function(p)
+    parsed.params = p
+    return ""
+  end)
+  -- path is whatever was left
+  if url ~= "" then parsed.database = string.gsub(url,"^/([^/]*).*","%1") end
+  if not parsed.database or #parsed.database == 0 then parsed.database = "admin" end
+
+  if not location then return parsed end
+
+  location = string.gsub(location,"^([^@]*)@", function(u) parsed.userinfo = u; return "" end)
+
+  parsed.hosts = {}
+  string.gsub(location, "([^,]+)", function(u)
+    local pr = { host = "localhost", port = 27017 }
+    u = string.gsub(u, ":([^:]*)$",
+      function(p) pr.port = p; return "" end)
+    if u ~= "" then pr.host = u end
+   table.insert(parsed.hosts, pr)
+  end)
+  if #parsed.hosts == 0 then parsed.hosts = {{ host = "localhost", port = 27017 }} end
+
+  parsed.query = {}
+  if parsed.query_string then
+    string.gsub(parsed.query_string, "([^&]+)", function(u)
+      u = string.gsub(u, "([^=]*)=([^=]*)$", function(k,v) parsed.query[k] = v; return "" end)
     end)
-    -- get scheme
-    url = string.gsub(url, "^([%w][%w%+%-%.]*)%:",
-        function(s) parsed.scheme = s; return "" end)
+  end
 
-    -- get authority
-    local location
-    url = string.gsub(url, "^//([^/]*)", function(n)
-        location = n
-        return ""
-    end)
-
-    -- get query stringing
-    url = string.gsub(url, "%?(.*)", function(q)
-        parsed.query_string = q
-        return ""
-    end)
-    -- get params
-    url = string.gsub(url, "%;(.*)", function(p)
-        parsed.params = p
-        return ""
-    end)
-    -- path is whatever was left
-    if url ~= "" then parsed.database = string.gsub(url,"^/([^/]*).*","%1") end
-    if not parsed.database or #parsed.database == 0 then parsed.database = "admin" end
-
-    if not location then return parsed end
-
-    location = string.gsub(location,"^([^@]*)@",
-        function(u) parsed.userinfo = u; return "" end)
-
-    parsed.hosts = {}
-    string.gsub(location, "([^,]+)", function(u)
-      local pr = { host = "localhost", port = 27017 }
-      u = string.gsub(u, ":([^:]*)$",
-        function(p) pr.port = p; return "" end)
-      if u ~= "" then pr.host = u end
-     table.insert(parsed.hosts, pr)
-    end)
-    if #parsed.hosts == 0 then parsed.hosts = {{ host = "localhost", port = 27017 }} end
-
-    parsed.query = {}
-    if parsed.query_string then
-      string.gsub(parsed.query_string, "([^&]+)", function(u)
-        u = string.gsub(u, "([^=]*)=([^=]*)$",
-          function(k,v) parsed.query[k] = v; return "" end)
-      end)
-    end
-
-    local userinfo = parsed.userinfo
-    if not userinfo then return parsed end
-    userinfo = string.gsub(userinfo, ":([^:]*)$",
-        function(p) parsed.password = p; return "" end)
-    parsed.user = userinfo
-    return parsed
+  local userinfo = parsed.userinfo
+  if not userinfo then return parsed end
+  userinfo = string.gsub(userinfo, ":([^:]*)$",
+    function(p) parsed.password = p; return "" end)
+  parsed.user = userinfo
+  return parsed
 end
 
 local function xor_bytestr( a, b )
-    local res = ""    
-    for i=1,#a do
-        res = res .. string.char(bit.bxor(string.byte(a,i,i), string.byte(b, i, i)))
-    end
-    return res
+  local res = ""
+  for i=1,#a do
+    res = res .. string.char(bit.bxor(string.byte(a,i,i), string.byte(b, i, i)))
+  end
+  return res
 end
 
 local function xor_bytestr( a, b )
-    local res = ""    
-    for i=1,#a do
-        res = res .. string.char(bit.bxor(string.byte(a,i,i), string.byte(b, i, i)))
-    end
-    return res
+  local res = ""
+  for i=1,#a do
+    res = res .. string.char(bit.bxor(string.byte(a,i,i), string.byte(b, i, i)))
+  end
+  return res
 end
 
 -- A simple implementation of PBKDF2_HMAC_SHA1
 local function pbkdf2_hmac_sha1( pbkdf2_key, iterations, salt, len )
-    local u1 = hmac_sha1(pbkdf2_key, salt .. "\0\0\0\1")
-    local ui = u1
-    for i=1,iterations-1 do
-        u1 = hmac_sha1(pbkdf2_key, u1)
-        ui = xor_bytestr(ui, u1)
+  local u1 = hmac_sha1(pbkdf2_key, salt .. "\0\0\0\1")
+  local ui = u1
+  for i=1,iterations-1 do
+    u1 = hmac_sha1(pbkdf2_key, u1)
+    ui = xor_bytestr(ui, u1)
+  end
+  if #ui < len then
+    for i=1,len-(#ui) do
+      ui = string.char(0) .. ui
     end
-    if #ui < len then
-        for i=1,len-(#ui) do
-            ui = string.char(0) .. ui
-        end
-    end
-    return ui
+  end
+  return ui
 end
 
 -- not full implementation, but oh well
@@ -178,7 +175,7 @@ local function saslprep(username)
 end
 
 local function pass_digest ( username , password )
-    return md5(username .. ":mongo:" .. password)
+  return md5(username .. ":mongo:" .. password)
 end
 
 return {
