@@ -27,15 +27,14 @@ function _M.new(host, port, timeout, pool_size)
     sock = sock;
     host = host;
     port = port;
-    pool_size = pool_size;
+    pool_size = tonumber(pool_size) or nil;
     _id = 0;
   }, mt)
 end
 
-function _M.connect(self, host, port, pool_size)
+function _M.connect(self, host, port)
   self.host = host or self.host
   self.port = port or self.port
-  self.pool_size = pool_size or self.pool_size
   return self.sock:connect(self.host, self.port, { pool_size = self.pool_size })
 end
 
