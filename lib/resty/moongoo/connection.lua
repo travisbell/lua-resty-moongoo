@@ -48,9 +48,9 @@ function _M.handshake(self)
   end
 end
 
-function _M.close(self)
+function _M.close(self, timeout, pool_size)
   if ngx then
-    self.sock:setkeepalive()
+    self.sock:setkeepalive(timeout, pool_size)
   else
     self.sock:close()
   end

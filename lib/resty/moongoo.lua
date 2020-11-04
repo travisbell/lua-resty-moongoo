@@ -4,13 +4,10 @@ local database = require("resty.moongoo.database")
 local parse_uri = require("resty.moongoo.utils").parse_uri
 local auth_scram = require("resty.moongoo.auth.scram")
 local auth_cr = require("resty.moongoo.auth.cr")
-
-
 local _M = {}
 
 _M._VERSION = '0.1'
 _M.NAME = 'Moongoo'
-
 
 local mt = { __index = _M }
 
@@ -26,7 +23,6 @@ function _M.new(uri)
   local wtimeout = conninfo.query and conninfo.query.wtimeoutMS or 1000
   local journal = conninfo.query and conninfo.query.journal or false
   local ssl = conninfo.query and conninfo.query.ssl or false
-
   local stimeout = conninfo.query.socketTimeoutMS and conninfo.query.socketTimeoutMS or nil
 
   return setmetatable({
@@ -46,14 +42,19 @@ function _M.new(uri)
 end
 
 function _M._auth(self, protocol)
- if not self.user then return 1 end
+  if not self.user then return 1 end
 
- if not protocol or protocol < cbson.int(3) or self.auth_algo == "MONGODB-CR" then
-   return auth_cr(self:db(self.default_db), self.user, self.password)
- else
-   return auth_scram(self:db(self.default_db), self.user, self.password)
- end
+  -- Don't need to re-auth connections that have placed in the connection pool
+  local connection_status = self:get_reused_times()
+  if connection_status and connection_status > 0 then
+    return 1
+  end
 
+  if not protocol or protocol < cbson.int(3) or self.auth_algo == "MONGODB-CR" then
+    return auth_cr(self:db(self.default_db), self.user, self.password)
+  else
+    return auth_scram(self:db(self.default_db), self.user, self.password)
+  end
 end
 
 function _M.connect(self)
@@ -128,9 +129,9 @@ function _M.connect(self)
   return nil, "Can't connect to any of servers"
 end
 
-function _M.close(self)
+function _M.close(self, timeout, pool_size)
   if self.connection then
-    self.connection:close()
+    self.connection:close(timeout, pool_size)
     self.connection = nil
   end
 end
